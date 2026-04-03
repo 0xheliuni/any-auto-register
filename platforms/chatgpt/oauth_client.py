@@ -26,6 +26,7 @@ from .utils import (
     seed_oai_device_cookie,
 )
 from .sentinel_token import build_sentinel_token
+from .sentinel_browser import get_sentinel_token_via_browser
 
 
 class OAuthClient:
@@ -1891,18 +1892,31 @@ class OAuthClient:
         self._log("步骤4: 检测到邮箱 OTP 验证")
 
         request_url = f"{self.oauth_issuer}/api/accounts/email-otp/validate"
-        sentinel_otp = build_sentinel_token(
-            self.session,
-            device_id,
+        sentinel_otp = get_sentinel_token_via_browser(
             flow="email_otp_validate",
-            user_agent=user_agent,
-            sec_ch_ua=sec_ch_ua,
-            impersonate=impersonate,
+            proxy=self.proxy,
+            page_url=state.current_url
+            or state.continue_url
+            or f"{self.oauth_issuer}/email-verification",
+            headless=self.browser_mode != "headed",
+            device_id=device_id,
+            log_fn=lambda msg: self._log(f"email_otp_validate: {msg}"),
         )
         if sentinel_otp:
-            self._log("email_otp_validate: 已生成 sentinel token")
+            self._log("email_otp_validate: 已通过 Playwright SentinelSDK 获取 token")
         else:
-            self._log("email_otp_validate: 未生成 sentinel token（继续尝试）")
+            sentinel_otp = build_sentinel_token(
+                self.session,
+                device_id,
+                flow="email_otp_validate",
+                user_agent=user_agent,
+                sec_ch_ua=sec_ch_ua,
+                impersonate=impersonate,
+            )
+            if sentinel_otp:
+                self._log("email_otp_validate: 已通过 HTTP PoW 获取 token")
+            else:
+                self._log("email_otp_validate: 未生成 sentinel token（继续尝试）")
 
         headers_otp = self._headers(
             request_url,
