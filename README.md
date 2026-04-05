@@ -94,7 +94,7 @@
 
 - Python 3.12+
 - Node.js 18+
-- Conda（推荐）
+- uv（推荐）或 Conda（兼容旧流程）
 - Windows（推荐直接使用仓库内启动脚本）
 
 ## ChatGPT 专项能力
@@ -162,33 +162,33 @@ Kiro 当前风控较严格，邮箱方案会显著影响成功率。当前项目
 
 ## 快速开始
 
-### 1. 创建并激活 Conda 环境
+### 1. 安装并同步后端依赖（uv）
 
 ```bash
-conda create -n any-auto-register python=3.12 -y
-conda activate any-auto-register
+uv python install 3.12
+uv sync
 ```
 
-### 2. 安装后端依赖
+项目现已提供 `pyproject.toml` 和 `uv.lock`，后续新增 Python 依赖请优先使用：
 
 ```bash
-pip install -r requirements.txt
+uv add <package>
 ```
 
-### 3. 安装浏览器相关依赖
+不要再使用 `uv pip install`。
+
+### 2. 安装浏览器相关依赖
 
 ```bash
-python -m playwright install chromium
-python -m camoufox fetch
+uv run python -m playwright install chromium
+uv run python -m camoufox fetch
 ```
 
-### 4. 安装并构建前端
+### 3. 安装并构建前端
 
 ```bash
-cd frontend
-npm install
-npm run build
-cd ..
+npm --prefix frontend install
+npm --prefix frontend run build
 ```
 
 构建完成后，静态资源输出到：
@@ -197,7 +197,7 @@ cd ..
 ./static
 ```
 
-### 5. 启动项目
+### 4. 启动项目
 
 #### Windows 推荐方式
 
@@ -213,11 +213,12 @@ CMD：
 start_backend.bat
 ```
 
+这两个脚本会优先使用仓库根目录下由 `uv sync` 创建的 `.venv`；如果 `.venv` 不存在，再回退到 `any-auto-register` 这个 conda 环境。
+
 #### 手动启动
 
 ```bash
-conda activate any-auto-register
-python main.py
+uv run python main.py
 ```
 
 启动后默认访问：
@@ -237,7 +238,7 @@ http://localhost:8000
 - `stop_backend.bat`
 - `stop_backend.ps1`
 
-这些脚本会强制使用 `any-auto-register` 环境启动/停止后端，可避免以下常见问题：
+这些脚本会优先使用仓库根目录 `.venv`，否则回退到 `any-auto-register` conda 环境启动/停止后端，可避免以下常见问题：
 
 - 后端能启动，但 Solver 没有拉起
 - `ModuleNotFoundError: quart`
@@ -300,13 +301,12 @@ http://localhost:8889
 前端“全局配置 → 验证码 → Turnstile Solver”显示的是**后端检测结果**，因此：
 
 - 后端未启动 → 前端显示“未运行”
-- 后端已启动但不在正确 conda 环境 → Solver 可能启动失败
+- 后端已启动但不在正确 `.venv` / conda 环境 → Solver 可能启动失败
 
 ### 手动启动 Solver
 
 ```bash
-conda activate any-auto-register
-python services/turnstile_solver/start.py --browser_type camoufox --port 8889
+uv run python services/turnstile_solver/start.py --browser_type camoufox --port 8889
 ```
 
 ### Solver 日志
@@ -445,7 +445,7 @@ curl http://localhost:8000/api/solver/status
 
 ### 2. 出现 `ModuleNotFoundError: quart`
 
-说明当前启动后端的 Python 不是 `any-auto-register` 环境，请改用：
+说明当前启动后端的 Python 不是仓库 `.venv` 或 `any-auto-register` conda 环境，请改用：
 
 ```powershell
 .\start_backend.ps1
@@ -464,6 +464,12 @@ python -c "import sys; print(sys.executable)"
 ```
 
 输出应类似：
+
+```text
+D:\github\any-auto-register\.venv\Scripts\python.exe
+```
+
+或：
 
 ```text
 D:\miniconda\conda3\envs\any-auto-register\python.exe
